@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NAV-01 · GPS-denied guidance demo</title>
+  <link rel="stylesheet" href="css/site.css" />
+  <style>
+    html, body { height: 100%; overflow: hidden; background: #070b12; }
+    .wrap { max-width: none; padding: 0; height: 100%; }
+    nav { margin: 10px 12px 0; }
+    #stage { position: relative; height: calc(100% - 58px); margin: 8px 12px 12px; border: 1px solid var(--line); background: #070b12; }
+    canvas.webgl { display: block; width: 100%; height: 100%; }
+    .hud {
+      position: absolute; inset: 0; pointer-events: none;
+      font-family: Consolas, "Cascadia Mono", monospace;
+    }
+    .hud * { pointer-events: auto; }
+    .banner {
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      letter-spacing: 0.22em; font-size: 12px; font-weight: 700;
+      color: #e8c07d; border: 1px solid #e8c07d; padding: 5px 12px;
+      background: rgba(7,11,18,0.72);
+    }
+    .banner.go { color: #5ee0b5; border-color: #5ee0b5; }
+    .panel-hud {
+      position: absolute; background: rgba(11,16,24,0.82);
+      border: 1px solid var(--line); padding: 10px 12px; width: 230px;
+      font-size: 12px; color: var(--muted);
+    }
+    .panel-hud h4 {
+      color: var(--accent); font-size: 10px; letter-spacing: 0.14em;
+      margin: 0 0 8px; font-weight: 700;
+    }
+    .row { display: flex; justify-content: space-between; gap: 8px; margin: 3px 0; }
+    .row b { color: var(--title); font-weight: 600; }
+    .left { left: 12px; top: 44px; }
+    .right { right: 12px; top: 44px; }
+    .feeds {
+      position: absolute; left: 12px; bottom: 52px; display: flex; gap: 8px;
+    }
+    .feed {
+      width: 196px; background: rgba(11,16,24,0.86); border: 1px solid var(--line);
+    }
+    .feed .cap {
+      font-size: 10px; letter-spacing: 0.12em; color: var(--accent-2);
+      padding: 4px 8px; border-bottom: 1px solid var(--line);
+    }
+    .feed canvas { display: block; width: 196px; height: 118px; background: #0b1018; }
+    .bar {
+      position: absolute; left: 12px; right: 12px; bottom: 12px;
+      display: flex; align-items: center; gap: 10px;
+      background: rgba(11,16,24,0.86); border: 1px solid var(--line); padding: 7px 10px;
+    }
+    .bar button {
+      background: #161f2c; color: var(--title); border: 1px solid var(--line);
+      padding: 5px 10px; cursor: pointer; font: 12px Consolas, monospace;
+    }
+    .bar button:hover { border-color: var(--accent); color: var(--accent); }
+    .bar input[type=range] { flex: 1; accent-color: #5ee0b5; }
+    .hint { color: var(--muted); font-size: 11px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <div class="brand">HIEP PHAM THANH <span>/ NAV-01 LIVE</span></div>
+      <div class="links">
+        <a href="index.html">Overview</a>
+        <a href="uav.html">UAV ROS 2 + PX4</a>
+        <a class="on" href="demo.html">3D demo</a>
+        <a href="ble.html">BLE ranging</a>
+      </div>
+    </nav>
+    <div id="stage">
+      <canvas id="view" class="webgl"></canvas>
+      <div class="hud">
+        <div class="banner" id="gpsBanner">GPS DENIED · VIO / EKF2 VISION</div>
+        <div class="panel-hud left">
+          <h4>COMPANION · ORIN NX</h4>
+          <div class="row"><span>frame</span><b id="tFrame">map</b></div>
+          <div class="row"><span>x</span><b id="tX">0.00</b></div>
+          <div class="row"><span>y</span><b id="tY">0.00</b></div>
+          <div class="row"><span>z</span><b id="tZ">0.00</b></div>
+          <div class="row"><span>yaw</span><b id="tYaw">0.0°</b></div>
+          <div class="row"><span>setpoint err</span><b id="tErr">0.04 m</b></div>
+          <div class="row"><span>VIO quality</span><b id="tVio">0.92</b></div>
+          <div class="row"><span>octomap</span><b id="tOcc">0 nodes</b></div>
+        </div>
+        <div class="panel-hud right">
+          <h4>PX4 · MAVLINK</h4>
+          <div class="row"><span>mode</span><b>OFFBOARD</b></div>
+          <div class="row"><span>EKF2_EV_CTRL</span><b>vision</b></div>
+          <div class="row"><span>GNSS</span><b id="tGps">lost</b></div>
+          <div class="row"><span>vision age</span><b id="tAge">12 ms</b></div>
+          <div class="row"><span>failsafe</span><b>RTL if stale</b></div>
+          <div class="row"><span>stack</span><b>ROS 2 Humble</b></div>
+          <div class="row"><span></span><b>MAVSDK · RTAB-Map</b></div>
+        </div>
+        <div class="feeds">
+          <div class="feed">
+            <div class="cap">FPV / DEPTH CAM</div>
+            <canvas id="fpv" class="webgl" width="196" height="118"></canvas>
+          </div>
+          <div class="feed">
+            <div class="cap">OCCUPANCY SLICE · Z</div>
+            <canvas id="occ" width="196" height="118"></canvas>
+          </div>
+        </div>
+        <div class="bar">
+          <button id="btnPlay">PAUSE</button>
+          <button id="btnGps">GPS: OFF</button>
+          <input id="scrub" type="range" min="0" max="1000" value="0" />
+          <span class="hint" id="tMission">mission 0%</span>
+          <span class="hint">drag to orbit · wheel zoom</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="vendor/three.min.js"></script>
+  <script>
+  (() => {
+    const stage = document.getElementById("stage");
+    const canvas = document.getElementById("view");
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.setClearColor(0x070b12, 1);
+
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x070b12, 0.028);
+
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.08, 80);
+    const fpvCam = new THREE.PerspectiveCamera(70, 196 / 118, 0.05, 20);
+
+    const fpvCanvas = document.getElementById("fpv");
+    const fpvRenderer = new THREE.WebGLRenderer({ canvas: fpvCanvas, antialias: true });
+    fpvRenderer.setPixelRatio(1);
+    fpvRenderer.setSize(196, 118, false);
+    fpvRenderer.setClearColor(0x070b12, 1);
+    const occCanvas = document.getElementById("occ");
+    const occCtx = occCanvas.getContext("2d");
+
+    scene.add(new THREE.HemisphereLight(0xb7d4ff, 0x1a1510, 0.55));
+    const sun = new THREE.DirectionalLight(0xe8f2ff, 0.85);
+    sun.position.set(6, 12, 4);
+    scene.add(sun);
+    const noseLight = new THREE.PointLight(0x5ee0b5, 1.4, 6);
+    scene.add(noseLight);
+
+    const grid = new THREE.GridHelper(28, 28, 0x1e3a3a, 0x15202c);
+    scene.add(grid);
+
+    const matWall = new THREE.MeshStandardMaterial({ color: 0x1b2836, metalness: 0.15, roughness: 0.8 });
+    const matAccent = new THREE.MeshStandardMaterial({ color: 0x0e3d34, emissive: 0x08352c, metalness: 0.2, roughness: 0.6 });
+    function box(w, h, d, x, y, z, mat = matWall) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+      m.position.set(x, y, z);
+      scene.add(m);
+      return m;
+    }
+    function wallEdges(w, h, d, x, y, z) {
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({
+        color: 0x1a2a38, transparent: true, opacity: 0.16, side: THREE.DoubleSide
+      }));
+      mesh.position.set(x, y, z);
+      scene.add(mesh);
+      const edges = new THREE.LineSegments(
+        new THREE.EdgesGeometry(mesh.geometry),
+        new THREE.LineBasicMaterial({ color: 0x3d6a6a })
+      );
+      edges.position.copy(mesh.position);
+      scene.add(edges);
+    }
+    wallEdges(28, 3.2, 0.08, 4, 1.5, -7.2);
+    wallEdges(28, 3.2, 0.08, 4, 1.5, 11.2);
+    wallEdges(0.08, 3.2, 18.5, -10, 1.5, 2);
+    wallEdges(0.08, 3.2, 18.5, 18, 1.5, 2);
+    const pillars = [
+      box(0.9, 2.2, 0.9, 4.2, 1.1, 1.4, matAccent),
+      box(0.9, 2.2, 0.9, 8.6, 1.1, -1.8, matAccent),
+      box(1.1, 2.2, 1.1, 11.2, 1.1, 3.6, matAccent),
+    ];
+
+    const drone = new THREE.Group();
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0xd5dee8, metalness: 0.55, roughness: 0.28 });
+    const armMat = new THREE.MeshStandardMaterial({ color: 0x2a3544, metalness: 0.4, roughness: 0.45 });
+    const propMat = new THREE.MeshStandardMaterial({ color: 0x5ee0b5, emissive: 0x146b4d, emissiveIntensity: 0.55, transparent: true, opacity: 0.55 });
+    drone.add(new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.07, 0.16), bodyMat));
+    [[0.22, 0.22], [0.22, -0.22], [-0.22, 0.22], [-0.22, -0.22]].forEach(([x, z], i) => {
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.018, 0.03), armMat);
+      arm.position.set(x * 0.55, 0.01, z * 0.55);
+      arm.rotation.y = Math.atan2(z, x);
+      drone.add(arm);
+      const prop = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.01, 24), propMat);
+      prop.rotation.x = Math.PI / 2;
+      prop.position.set(x * 1.05, 0.05, z * 1.05);
+      prop.userData.spin = i % 2 ? 1 : -1;
+      drone.add(prop);
+    });
+    const frustum = new THREE.Mesh(
+      new THREE.ConeGeometry(0.16, 0.42, 4, 1, true),
+      new THREE.MeshBasicMaterial({ color: 0x7ec8ff, transparent: true, opacity: 0.12, wireframe: true })
+    );
+    frustum.rotation.x = -Math.PI / 2;
+    frustum.position.set(0, 0, -0.38);
+    frustum.layers.set(2);
+    drone.add(frustum);
+    scene.add(drone);
+    camera.layers.enable(2);
+
+    const curve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(-5.5, 0.35, 6.5),
+      new THREE.Vector3(-2.2, 0.9, 4.2),
+      new THREE.Vector3(0.6, 1.15, 2.6),
+      new THREE.Vector3(2.4, 1.2, 2.8),
+      new THREE.Vector3(4.0, 1.25, -0.2),
+      new THREE.Vector3(6.4, 1.3, -0.4),
+      new THREE.Vector3(8.5, 1.28, 0.9),
+      new THREE.Vector3(10.4, 1.32, 1.2),
+      new THREE.Vector3(12.6, 1.2, 5.2),
+      new THREE.Vector3(10.8, 1.05, 7.4),
+    ]);
+    const pathGeo = new THREE.TubeGeometry(curve, 180, 0.025, 8, false);
+    scene.add(new THREE.Mesh(pathGeo, new THREE.MeshBasicMaterial({ color: 0x7ec8ff, transparent: true, opacity: 0.55 })));
+
+    const trailPts = [];
+    const trailGeo = new THREE.BufferGeometry();
+    const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: 0x5ee0b5 }));
+    scene.add(trail);
+
+    const maxOcc = 900;
+    const occMesh = new THREE.InstancedMesh(
+      new THREE.BoxGeometry(0.22, 0.22, 0.22),
+      new THREE.MeshStandardMaterial({ color: 0x5ee0b5, transparent: true, opacity: 0.32, roughness: 0.5 }),
+      maxOcc
+    );
+    occMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    occMesh.count = 0;
+    scene.add(occMesh);
+    const dummy = new THREE.Object3D();
+    const occCells = [];
+    function considerOcc(x, y, z) {
+      const k = `${x.toFixed(1)},${y.toFixed(1)},${z.toFixed(1)}`;
+      if (occCells.find((c) => c.k === k) || occCells.length >= maxOcc) return;
+      occCells.push({ k, x, y, z });
+    }
+    function harvestOcc(pos) {
+      pillars.forEach((p) => {
+        if (pos.distanceTo(p.position) < 5.2) {
+          for (let i = 0; i < 10; i++) {
+            considerOcc(
+              p.position.x + (Math.random() - 0.5) * 1.1,
+              0.2 + Math.random() * 1.8,
+              p.position.z + (Math.random() - 0.5) * 1.1
+            );
+          }
+        }
+      });
+      for (let i = 0; i < 3; i++) {
+        considerOcc(pos.x + (Math.random() - 0.5) * 1.1, 0.1 + Math.random() * 0.25, pos.z + (Math.random() - 0.5) * 1.1);
+      }
+    }
+    function syncOcc() {
+      occCells.forEach((c, i) => {
+        dummy.position.set(c.x, c.y, c.z);
+        dummy.scale.setScalar(1);
+        dummy.updateMatrix();
+        occMesh.setMatrixAt(i, dummy.matrix);
+      });
+      occMesh.count = occCells.length;
+      occMesh.instanceMatrix.needsUpdate = true;
+    }
+
+    let playing = true;
+    let gpsOn = false;
+    let t = 0.22;
+    const orbit = { theta: 0.5, phi: 0.58, r: 8.6 };
+    let dragging = false, lx = 0, ly = 0;
+
+    canvas.addEventListener("pointerdown", (e) => { dragging = true; lx = e.clientX; ly = e.clientY; });
+    window.addEventListener("pointerup", () => dragging = false);
+    window.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      orbit.theta -= (e.clientX - lx) * 0.005;
+      orbit.phi = Math.min(1.25, Math.max(0.18, orbit.phi + (e.clientY - ly) * 0.005));
+      lx = e.clientX; ly = e.clientY;
+    });
+    stage.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      orbit.r = Math.min(14, Math.max(3.2, orbit.r + e.deltaY * 0.006));
+    }, { passive: false });
+
+    document.getElementById("btnPlay").onclick = () => {
+      playing = !playing;
+      document.getElementById("btnPlay").textContent = playing ? "PAUSE" : "PLAY";
+    };
+    document.getElementById("btnGps").onclick = () => {
+      gpsOn = !gpsOn;
+      document.getElementById("btnGps").textContent = gpsOn ? "GPS: ON" : "GPS: OFF";
+      const b = document.getElementById("gpsBanner");
+      b.textContent = gpsOn ? "GNSS LOCK · EKF2 GPS+VISION" : "GPS DENIED · VIO / EKF2 VISION";
+      b.classList.toggle("go", gpsOn);
+      document.getElementById("tGps").textContent = gpsOn ? "fix" : "lost";
+    };
+    const scrub = document.getElementById("scrub");
+    scrub.oninput = () => { t = Number(scrub.value) / 1000; };
+
+    function resize() {
+      const w = stage.clientWidth, h = stage.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / Math.max(h, 1);
+      camera.updateProjectionMatrix();
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    const tmp = new THREE.Vector3();
+    const look = new THREE.Vector3();
+    function poseAt(u) {
+      const p = curve.getPointAt(u);
+      const tan = curve.getTangentAt(u);
+      return { p, tan };
+    }
+
+    function drawOccMap(pos) {
+      const w = occCanvas.width, h = occCanvas.height;
+      occCtx.fillStyle = "#0b1018";
+      occCtx.fillRect(0, 0, w, h);
+      occCtx.strokeStyle = "#1e3a3a";
+      for (let i = 0; i < 10; i++) {
+        occCtx.beginPath(); occCtx.moveTo(i * 20, 0); occCtx.lineTo(i * 20, h); occCtx.stroke();
+        occCtx.beginPath(); occCtx.moveTo(0, i * 12); occCtx.lineTo(w, i * 12); occCtx.stroke();
+      }
+      const sx = (x) => ((x + 8) / 24) * w;
+      const sy = (z) => h - ((z + 6) / 16) * h;
+      occCtx.fillStyle = "rgba(94,224,181,0.45)";
+      occCells.forEach((c) => occCtx.fillRect(sx(c.x) - 2, sy(c.z) - 2, 4, 4));
+      occCtx.strokeStyle = "#7ec8ff";
+      occCtx.beginPath();
+      curve.getPoints(40).forEach((p, i) => i ? occCtx.lineTo(sx(p.x), sy(p.z)) : occCtx.moveTo(sx(p.x), sy(p.z)));
+      occCtx.stroke();
+      occCtx.fillStyle = "#e8c07d";
+      occCtx.beginPath(); occCtx.arc(sx(pos.x), sy(pos.z), 4, 0, Math.PI * 2); occCtx.fill();
+    }
+
+    const clock = new THREE.Clock();
+    function tick() {
+      requestAnimationFrame(tick);
+      const dt = Math.min(clock.getDelta(), 0.05);
+      if (playing) t = (t + dt * 0.06) % 1;
+      scrub.value = String(Math.floor(t * 1000));
+
+      const { p, tan } = poseAt(t);
+      drone.position.copy(p);
+      drone.lookAt(p.x + tan.x, p.y + tan.y, p.z + tan.z);
+      drone.children.forEach((ch) => {
+        if (ch.userData.spin) ch.rotation.z += dt * 28 * ch.userData.spin;
+      });
+      noseLight.position.copy(p);
+
+      trailPts.push(p.clone());
+      if (trailPts.length > 240) trailPts.shift();
+      trailGeo.setFromPoints(trailPts);
+
+      harvestOcc(p);
+      if (playing) syncOcc();
+
+      const yaw = Math.atan2(tan.x, tan.z);
+      document.getElementById("tX").textContent = p.x.toFixed(2);
+      document.getElementById("tY").textContent = p.z.toFixed(2);
+      document.getElementById("tZ").textContent = p.y.toFixed(2);
+      document.getElementById("tYaw").textContent = (yaw * 180 / Math.PI).toFixed(1) + "°";
+      document.getElementById("tErr").textContent = (0.03 + Math.sin(t * 40) * 0.02).toFixed(3) + " m";
+      document.getElementById("tVio").textContent = (gpsOn ? 0.97 : 0.88 + 0.08 * Math.sin(t * 12)).toFixed(2);
+      document.getElementById("tOcc").textContent = occCells.length + " nodes";
+      document.getElementById("tAge").textContent = (9 + Math.floor(Math.random() * 8)) + " ms";
+      document.getElementById("tFrame").textContent = gpsOn ? "local_ned" : "map";
+      document.getElementById("tMission").textContent = "mission " + Math.floor(t * 100) + "%";
+
+      tmp.set(
+        p.x + orbit.r * Math.sin(orbit.phi) * Math.cos(orbit.theta),
+        p.y + orbit.r * Math.cos(orbit.phi),
+        p.z + orbit.r * Math.sin(orbit.phi) * Math.sin(orbit.theta)
+      );
+      camera.position.lerp(tmp, 0.12);
+      look.copy(p); look.y += 0.3;
+      camera.lookAt(look);
+
+      fpvCam.position.copy(p);
+      fpvCam.lookAt(p.x + tan.x * 3, p.y + 0.05, p.z + tan.z * 3);
+
+      renderer.render(scene, camera);
+      fpvRenderer.render(scene, fpvCam);
+      drawOccMap(p);
+    }
+    tick();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AGV motion layer</title>
+  <link rel="stylesheet" href="css/site.css" />
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <div class="brand">HIEP PHAM THANH <span>/ NAV</span></div>
+      <div class="links">
+        <a href="index.html">Overview</a>
+        <a href="demo.html">3D demo</a>
+        <a href="uav.html">UAV ROS 2 + PX4</a>
+        <a href="ble.html">BLE ranging</a>
+        <a href="slam.html">RTAB-Map SLAM</a>
+        <a class="on" href="agv.html">AGV motion</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="kicker">Project 04 · path allocation</div>
+      <h1>AGV fleet motion layer</h1>
+      <p class="lede">Genesis Twin, on-prem. Telemetry at 100+ sensors/min into TimescaleDB. A constraint-programming scheduler assigns paths to 10 AGVs supporting 2,000+ units/day. Local avoidance is ROS + LiDAR in simulation. Recovery decisions from ~4 hours to under 3 minutes.</p>
+    </header>
+
+    <div class="two">
+      <div>
+        <h3>Layers</h3>
+        <div class="panel">
+          <table>
+            <tr><th>Layer</th><th>Does</th></tr>
+            <tr><td>Fleet</td><td>Constraint scheduler, keep-out, no two AGVs on the same segment</td></tr>
+            <tr><td>Local</td><td>ROS + LiDAR inflation, stop/replan on dynamic block</td></tr>
+            <tr><td>Plant</td><td>TimescaleDB telemetry, closed-loop retraining, on-prem LLM for recovery playbooks</td></tr>
+          </table>
+        </div>
+        <p>Useful to Hest as path planning / obstacle keep-out, not as perception. Same split they want on the UAV: one team maps geometry, another (not me here) can own detectors.</p>
+      </div>
+      <div>
+        <h3>Bosch intern (compute box)</h3>
+        <p>ADAS embedded on NVIDIA Jetson + TensorRT, <b style="color:#5ee0b5">+300% inference</b>, ASPICE reviews and tests. That is the thermal/latency envelope of an Orin companion next to a PX4 FMU — independent of the AGV planner.</p>
+        <div class="panel">
+          <p class="note">Education: Engineer of Automation &amp; Control, HCMUTE 2019–2023. Sensors, control, embedded as the undergraduate core — then Jetson at Bosch, then ranging + SLAM in production R&amp;D.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3>JD crosswalk</h3>
+    <div class="panel">
+      <table>
+        <tr><th>Hest ask</th><th>Where it lives on this site</th></tr>
+        <tr><td>C++ / Python</td><td>All four projects</td></tr>
+        <tr><td>ROS 2, PX4, MAVLink, MAVSDK, Jetson/Orin</td><td><a href="uav.html">UAV guidance</a> + Bosch Jetson</td></tr>
+        <tr><td>SLAM / VIO, 3D map, GPS-denied</td><td><a href="uav.html">UAV</a> + <a href="slam.html">RTAB-Map</a></td></tr>
+        <tr><td>Path / obstacle avoidance</td><td>UAV local planner + this AGV layer</td></tr>
+        <tr><td>LiDAR / depth / IMU / GNSS</td><td>UAV, SLAM, AGV; fusion habits from <a href="ble.html">BLE</a></td></tr>
+        <tr><td>Not YOLO</td><td>No detector in any loop on this site</td></tr>
+      </table>
+    </div>
+
+    <footer><a href="slam.html">← SLAM</a> · <a href="index.html">Overview</a> · phamthanhhiep000@gmail.com</footer>
+  </div>
+</body>
+</html>

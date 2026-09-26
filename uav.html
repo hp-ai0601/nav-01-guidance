@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UAV guidance — ROS 2 + PX4</title>
+  <link rel="stylesheet" href="css/site.css" />
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <div class="brand">HIEP PHAM THANH <span>/ NAV</span></div>
+      <div class="links">
+        <a href="index.html">Overview</a>
+        <a href="demo.html">3D demo</a>
+        <a class="on" href="uav.html">UAV ROS 2 + PX4</a>
+        <a href="ble.html">BLE ranging</a>
+        <a href="slam.html">RTAB-Map SLAM</a>
+        <a href="agv.html">AGV motion</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="kicker">Project 01 · guidance stack</div>
+      <h1>GPS-denied quadcopter guidance</h1>
+      <p class="lede">Companion computer owns pose, map, and plan. PX4 on the FMU owns attitude, mixing, and failsafes. First airframe is a PX4 quadcopter. Interfaces (vision pose, occupancy, setpoints) do not care if mixing later becomes Quadplane/VTOL.</p>
+    </header>
+
+    <h3>Split of responsibility</h3>
+    <div class="panel">
+      <svg class="diagram" viewBox="0 0 980 290" role="img" aria-label="Companion vs PX4 split">
+        <rect x="1" y="1" width="978" height="288" fill="#111924" stroke="#2a3a4e"/>
+        <text x="24" y="28" fill="#5ee0b5" font-size="12" font-family="Consolas">COMPANION · Jetson Orin NX · ROS 2 Humble</text>
+        <text x="560" y="28" fill="#7ec8ff" font-size="12" font-family="Consolas">FMU · PX4</text>
+        <defs>
+          <marker id="arr" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5ee0b5"/></marker>
+          <marker id="arr2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#7ec8ff"/></marker>
+        </defs>
+        <rect x="20" y="44" width="150" height="52" fill="#161f2c" stroke="#5ee0b5"/>
+        <text x="32" y="66" fill="#d7e2ee" font-size="12">Depth + IMU</text>
+        <text x="32" y="84" fill="#8aa0b5" font-size="11">VIO frontend</text>
+        <line x1="170" y1="70" x2="188" y2="70" stroke="#5ee0b5" marker-end="url(#arr)"/>
+        <rect x="190" y="44" width="150" height="52" fill="#161f2c" stroke="#5ee0b5"/>
+        <text x="202" y="66" fill="#d7e2ee" font-size="12">Local EKF</text>
+        <text x="202" y="84" fill="#8aa0b5" font-size="11">map → odom → base</text>
+        <line x1="340" y1="70" x2="358" y2="70" stroke="#5ee0b5" marker-end="url(#arr)"/>
+        <rect x="360" y="44" width="150" height="52" fill="#161f2c" stroke="#5ee0b5"/>
+        <text x="372" y="66" fill="#d7e2ee" font-size="12">VISION_POS</text>
+        <text x="372" y="84" fill="#8aa0b5" font-size="11">MAVLink to EKF2</text>
+        <line x1="510" y1="70" x2="558" y2="70" stroke="#7ec8ff" marker-end="url(#arr2)"/>
+        <rect x="560" y="44" width="180" height="52" fill="#161f2c" stroke="#7ec8ff"/>
+        <text x="572" y="66" fill="#d7e2ee" font-size="12">PX4 EKF2</text>
+        <text x="572" y="84" fill="#8aa0b5" font-size="11">GPS off / EV on</text>
+        <line x1="740" y1="70" x2="758" y2="70" stroke="#7ec8ff" marker-end="url(#arr2)"/>
+        <rect x="760" y="44" width="196" height="52" fill="#161f2c" stroke="#7ec8ff"/>
+        <text x="772" y="66" fill="#d7e2ee" font-size="12">Attitude + mixer</text>
+        <text x="772" y="84" fill="#8aa0b5" font-size="11">quad → later VTOL</text>
+        <rect x="20" y="128" width="150" height="52" fill="#161f2c" stroke="#5ee0b5"/>
+        <text x="32" y="150" fill="#d7e2ee" font-size="12">RTAB-Map</text>
+        <text x="32" y="168" fill="#8aa0b5" font-size="11">OctoMap occupancy</text>
+        <line x1="170" y1="154" x2="188" y2="154" stroke="#5ee0b5" marker-end="url(#arr)"/>
+        <rect x="190" y="128" width="150" height="52" fill="#161f2c" stroke="#5ee0b5"/>
+        <text x="202" y="150" fill="#d7e2ee" font-size="12">Inflation</text>
+        <text x="202" y="168" fill="#8aa0b5" font-size="11">vehicle radius</text>
+        <line x1="340" y1="154" x2="358" y2="154" stroke="#5ee0b5" marker-end="url(#arr)"/>
+        <rect x="360" y="128" width="150" height="52" fill="#161f2c" stroke="#5ee0b5"/>
+        <text x="372" y="150" fill="#d7e2ee" font-size="12">Local planner</text>
+        <text x="372" y="168" fill="#8aa0b5" font-size="11">TEB / Nav2</text>
+        <line x1="510" y1="154" x2="558" y2="154" stroke="#e8c07d" marker-end="url(#arr)"/>
+        <rect x="560" y="128" width="180" height="52" fill="#161f2c" stroke="#e8c07d"/>
+        <text x="572" y="150" fill="#d7e2ee" font-size="12">MAVSDK offboard</text>
+        <text x="572" y="168" fill="#8aa0b5" font-size="11">SET_POSITION_TARGET</text>
+        <line x1="740" y1="154" x2="758" y2="154" stroke="#e8c07d" marker-end="url(#arr)"/>
+        <rect x="760" y="128" width="196" height="52" fill="#161f2c" stroke="#e8c07d"/>
+        <text x="772" y="150" fill="#d7e2ee" font-size="12">Failsafe RTL</text>
+        <text x="772" y="168" fill="#8aa0b5" font-size="11">stale vision → PX4</text>
+        <text x="24" y="214" fill="#8aa0b5" font-size="12">tf2: map → odom → base_link. GNSS is optional. When it drops, EKF2_EV_CTRL keeps vision; GPS fusion is gated off.</text>
+        <text x="24" y="236" fill="#8aa0b5" font-size="12">C++ nodes: odometry + map. Python: arm / offboard / RTL via MAVSDK. No YOLO in this loop.</text>
+        <text x="24" y="268" fill="#5ee0b5" font-size="12">SITL: Gazebo + PX4 → same topics on Orin. Airframe is a PX4 parameter set, not a new planner.</text>
+      </svg>
+    </div>
+
+    <div class="two">
+      <div>
+        <h3>ROS 2 graph (companion)</h3>
+        <div class="panel">
+          <table>
+            <tr><th>Node</th><th>Job</th></tr>
+            <tr><td class="mono">vio_node</td><td>Depth + IMU → visual-inertial odometry</td></tr>
+            <tr><td class="mono">rtabmap</td><td>Loop-closed 3D map, occupancy</td></tr>
+            <tr><td class="mono">planner_local</td><td>Inflated cost, TEB-style avoidance</td></tr>
+            <tr><td class="mono">offboard_bridge</td><td>MAVSDK setpoints + vision pose TX</td></tr>
+            <tr><td class="mono">watchdog</td><td>Pose age → hover / PX4 RTL</td></tr>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3>PX4 / MAVLink</h3>
+        <div class="panel">
+          <table>
+            <tr><th>Msg / param</th><th>Use</th></tr>
+            <tr><td class="mono">VISION_POSITION_ESTIMATE</td><td>Inject companion pose</td></tr>
+            <tr><td class="mono">SET_POSITION_TARGET_LOCAL_NED</td><td>Offboard setpoints</td></tr>
+            <tr><td class="mono">EKF2_EV_CTRL</td><td>Vision fusion when GPS denied</td></tr>
+            <tr><td class="mono">COM_OBL_ACT</td><td>Offboard loss → failsafe</td></tr>
+            <tr><td class="mono">NAV_RCL_ACT</td><td>RTL if companion dies</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <h3>Bring-up sequence (the demo I would run)</h3>
+    <div class="steps">
+      <div class="step"><b>1 SITL</b>PX4 + Gazebo, same ROS graph as hardware.</div>
+      <div class="step"><b>2 GPS OFF</b>Lock vision pose quality. Compare EKF vs VIO in bag.</div>
+      <div class="step"><b>3 MAP</b>Short corridor, occupancy inflation = vehicle radius.</div>
+      <div class="step"><b>4 PLAN</b>Waypoint in map frame, local avoid, then RTL.</div>
+      <div class="step"><b>5 ORIN</b>Same nodes on Jetson, MAVSDK offboard to real FMU.</div>
+    </div>
+
+    <h3>Why Quadplane/VTOL does not fork this stack</h3>
+    <p>SLAM, occupancy, and the planner live in the map frame. PX4 mixing and VTOL mode live on the FMU. Switching airframe is <code>SYS_AUTOSTART</code> + mixer, not a new VIO. That matches Hest’s “start on quadcopter, architecture must scale to Quadplane/VTOL”.</p>
+
+    <footer><a href="index.html">← Overview</a> · next: <a href="ble.html">BLE ranging</a></footer>
+  </div>
+</body>
+</html>

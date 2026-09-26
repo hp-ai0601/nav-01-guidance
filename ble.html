@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BLE Channel Sounding — ranging</title>
+  <link rel="stylesheet" href="css/site.css" />
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <div class="brand">HIEP PHAM THANH <span>/ NAV</span></div>
+      <div class="links">
+        <a href="index.html">Overview</a>
+        <a href="demo.html">3D demo</a>
+        <a href="uav.html">UAV ROS 2 + PX4</a>
+        <a class="on" href="ble.html">BLE ranging</a>
+        <a href="slam.html">RTAB-Map SLAM</a>
+        <a href="agv.html">AGV motion</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="kicker">Project 02 · shipped R&amp;D · automotive digital key</div>
+      <h1>Cm-level BLE Channel Sounding</h1>
+      <p class="lede">Passive Entry / Passive Start needs a distance, not a class label. TI CC2745 initiator/reflector firmware plus a Python ranging pipeline: raw HCI I/Q → MUSIC / ToF → robust filters → Kalman. This is the same job as GPS-denied UAV pose: noisy ranging, multipath, timing, fusion.</p>
+    </header>
+
+    <div class="stats">
+      <div class="stat"><b>~0.11 m</b><span>proposal MAE after Kalman</span></div>
+      <div class="stat"><b>16,880</b><span>shots across 0.5–20 m</span></div>
+      <div class="stat"><b>CC2745</b><span>car_node + key_node firmware</span></div>
+      <div class="stat"><b>ONNX</b><span>PyTorch export for embedded</span></div>
+    </div>
+
+    <h3>Pipeline</h3>
+    <div class="panel">
+      <svg class="diagram" viewBox="0 0 980 210" role="img" aria-label="BLE ranging pipeline">
+        <rect x="1" y="1" width="978" height="208" fill="#111924" stroke="#2a3a4e"/>
+        <defs>
+          <marker id="arrb" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="#5ee0b5"/></marker>
+        </defs>
+        <rect x="16" y="36" width="140" height="70" fill="#161f2c" stroke="#5ee0b5"/>
+        <text x="28" y="58" fill="#d7e2ee" font-size="13">CC2745 CS</text>
+        <text x="28" y="78" fill="#8aa0b5" font-size="11">I/Q, TQI, H, AoD</text>
+        <text x="28" y="94" fill="#8aa0b5" font-size="11">HCI raw hex</text>
+        <line x1="156" y1="71" x2="174" y2="71" stroke="#5ee0b5" marker-end="url(#arrb)"/>
+        <rect x="176" y="36" width="140" height="70" fill="#161f2c" stroke="#5ee0b5"/>
+        <text x="188" y="58" fill="#d7e2ee" font-size="13">cs_raw_parser</text>
+        <text x="188" y="78" fill="#8aa0b5" font-size="11">byte-level, not</text>
+        <text x="188" y="94" fill="#8aa0b5" font-size="11">SDK-only fields</text>
+        <line x1="316" y1="71" x2="334" y2="71" stroke="#5ee0b5" marker-end="url(#arrb)"/>
+        <rect x="336" y="36" width="150" height="70" fill="#161f2c" stroke="#7ec8ff"/>
+        <text x="348" y="58" fill="#d7e2ee" font-size="13">Estimators</text>
+        <text x="348" y="78" fill="#8aa0b5" font-size="11">WLR · MUSIC</text>
+        <text x="348" y="94" fill="#8aa0b5" font-size="11">ToD / ToA</text>
+        <line x1="486" y1="71" x2="504" y2="71" stroke="#5ee0b5" marker-end="url(#arrb)"/>
+        <rect x="506" y="36" width="150" height="70" fill="#161f2c" stroke="#e8c07d"/>
+        <text x="518" y="58" fill="#d7e2ee" font-size="13">Robustify</text>
+        <text x="518" y="78" fill="#8aa0b5" font-size="11">IQR outliers</text>
+        <text x="518" y="94" fill="#8aa0b5" font-size="11">adaptive jump ~2.1 m/s</text>
+        <line x1="656" y1="71" x2="674" y2="71" stroke="#5ee0b5" marker-end="url(#arrb)"/>
+        <rect x="676" y="36" width="140" height="70" fill="#161f2c" stroke="#5ee0b5"/>
+        <text x="688" y="58" fill="#d7e2ee" font-size="13">Kalman</text>
+        <text x="688" y="78" fill="#8aa0b5" font-size="11">bias corr.</text>
+        <text x="688" y="94" fill="#8aa0b5" font-size="11">smooth range</text>
+        <line x1="816" y1="71" x2="834" y2="71" stroke="#5ee0b5" marker-end="url(#arrb)"/>
+        <rect x="836" y="36" width="126" height="70" fill="#161f2c" stroke="#5ee0b5"/>
+        <text x="848" y="58" fill="#d7e2ee" font-size="13">meters</text>
+        <text x="848" y="78" fill="#8aa0b5" font-size="11">MAE ~0.11 m</text>
+        <text x="848" y="94" fill="#8aa0b5" font-size="11">ONNX out</text>
+        <text x="20" y="140" fill="#8aa0b5" font-size="12">Firmware: connection interval, CS event interval, subevent length (CCC timing), SysCtrlSystemReset on BLE drop. Python: capture, benchmark, CSV schema per CS step.</text>
+        <text x="20" y="164" fill="#8aa0b5" font-size="12">Parser is standalone (HCI payload → step_index, antenna, I, Q, TQI, H, H_Phase, frequency, AoD, RSSI) so extra fields do not wait on the TI SDK.</text>
+        <text x="20" y="188" fill="#5ee0b5" font-size="12">UAV transfer: replace BLE range with vision/IMU residuals; keep IQR + jump + EKF. Multipath ≈ NLOS depth holes.</text>
+      </svg>
+    </div>
+
+    <div class="two">
+      <div>
+        <h3>What I actually owned</h3>
+        <ul>
+          <li>C firmware on <code>car_node</code> / <code>key_node</code> (SimpleLink F3 / CC2745), CS event timing, disconnect self-reset.</li>
+          <li>Raw hex parser + cross-check against firmware-decoded fields (Phase 1 validation).</li>
+          <li>Algorithm bake-off: SDK distance vs WLR vs MUSIC vs fused proposal; benchmark runner and plots for the Japanese OEM.</li>
+          <li>Walk-speed jump gate (~2.1 m/s) so a static MAE does not cheat a moving key.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Why it belongs on a UAV CV</h3>
+        <p>GPS-denied navigation is ranging + timing + fusion under multipath. BLE Channel Sounding is the same loop at 2.4 GHz instead of a depth camera. I would not claim this is PX4. I would claim I already debug noisy estimators, firmware event timing, and Kalman gates — which is the hard part of VIO into EKF2.</p>
+      </div>
+    </div>
+
+    <footer><a href="uav.html">← UAV stack</a> · next: <a href="slam.html">RTAB-Map SLAM</a></footer>
+  </div>
+</body>
+</html>

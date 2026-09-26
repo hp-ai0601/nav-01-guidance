@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RTAB-Map dense SLAM</title>
+  <link rel="stylesheet" href="css/site.css" />
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <div class="brand">HIEP PHAM THANH <span>/ NAV</span></div>
+      <div class="links">
+        <a href="index.html">Overview</a>
+        <a href="demo.html">3D demo</a>
+        <a href="uav.html">UAV ROS 2 + PX4</a>
+        <a href="ble.html">BLE ranging</a>
+        <a class="on" href="slam.html">RTAB-Map SLAM</a>
+        <a href="agv.html">AGV motion</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="kicker">Project 03 · shipped mapping core</div>
+      <h1>RTAB-Map dense SLAM at 30 FPS</h1>
+      <p class="lede">Client needed a proprietary 3D scanning library after ARDK 2.0 was deprecated. I customized RTAB-Map (C++) on iPhone LiDAR + RGB. The output is a dense point cloud in real time — a mapping frontend, not a detector.</p>
+    </header>
+
+    <div class="stats">
+      <div class="stat"><b>30 FPS</b><span>dense cloud on device</span></div>
+      <div class="stat"><b>C++</b><span>RTAB-Map core, not a wrapper demo</span></div>
+      <div class="stat"><b>LiDAR+RGB</b><span>depth + camera + IMU</span></div>
+      <div class="stat"><b>ROS 2</b><span>same frontend on Orin</span></div>
+    </div>
+
+    <h3>Frontend that ports to the UAV</h3>
+    <div class="panel">
+      <svg class="diagram" viewBox="0 0 980 200" role="img" aria-label="SLAM frontend">
+        <rect x="1" y="1" width="978" height="198" fill="#111924" stroke="#2a3a4e"/>
+        <rect x="20" y="40" width="170" height="64" fill="#161f2c" stroke="#5ee0b5"/>
+        <text x="32" y="64" fill="#d7e2ee" font-size="13">RGB + depth</text>
+        <text x="32" y="84" fill="#8aa0b5" font-size="11">iPhone LiDAR / stereo</text>
+        <rect x="210" y="40" width="170" height="64" fill="#161f2c" stroke="#5ee0b5"/>
+        <text x="222" y="64" fill="#d7e2ee" font-size="13">IMU</text>
+        <text x="222" y="84" fill="#8aa0b5" font-size="11">visual-inertial</text>
+        <rect x="400" y="40" width="200" height="64" fill="#161f2c" stroke="#7ec8ff"/>
+        <text x="412" y="64" fill="#d7e2ee" font-size="13">RTAB-Map C++</text>
+        <text x="412" y="84" fill="#8aa0b5" font-size="11">odometry + loop close</text>
+        <rect x="620" y="40" width="160" height="64" fill="#161f2c" stroke="#e8c07d"/>
+        <text x="632" y="64" fill="#d7e2ee" font-size="13">Dense cloud</text>
+        <text x="632" y="84" fill="#8aa0b5" font-size="11">30 FPS render</text>
+        <rect x="800" y="40" width="160" height="64" fill="#161f2c" stroke="#5ee0b5"/>
+        <text x="812" y="64" fill="#d7e2ee" font-size="13">Occupancy</text>
+        <text x="812" y="84" fill="#8aa0b5" font-size="11">OctoMap / Nav2</text>
+        <text x="24" y="136" fill="#8aa0b5" font-size="12">Mobile build: ARKit camera/LiDAR timestamps → RTAB-Map. UAV build: same library as a ROS 2 node on Jetson, tf2 map→odom, occupancy for the local planner.</text>
+        <text x="24" y="160" fill="#5ee0b5" font-size="12">Loop closure is the GPS-denied map fix. Detection/YOLO is out of scope — geometry only.</text>
+      </svg>
+    </div>
+
+    <div class="two">
+      <div>
+        <h3>What shipped</h3>
+        <ul>
+          <li>Custom RTAB-Map C++ instead of a dead third-party AR SDK.</li>
+          <li>Dense reconstruction at 30 FPS from LiDAR + camera.</li>
+          <li>Client-owned scanning library — not a one-off Blender export.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>Hest mapping slot</h3>
+        <p>JD asks for SLAM/VIO, 3D map, depth camera / LiDAR / IMU. This core is that frontend. On the quadcopter it feeds OctoMap + the local planner on the UAV page; it does not classify objects.</p>
+      </div>
+    </div>
+
+    <footer><a href="ble.html">← BLE ranging</a> · next: <a href="agv.html">AGV motion</a></footer>
+  </div>
+</body>
+</html>

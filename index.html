@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hiep Pham Thanh — Navigation portfolio</title>
+  <link rel="stylesheet" href="css/site.css" />
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <div class="brand">HIEP PHAM THANH <span>/ NAV</span></div>
+      <div class="links">
+        <a class="on" href="index.html">Overview</a>
+        <a href="demo.html">3D demo</a>
+        <a href="uav.html">UAV ROS 2 + PX4</a>
+        <a href="ble.html">BLE ranging</a>
+        <a href="slam.html">RTAB-Map SLAM</a>
+        <a href="agv.html">AGV motion</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="kicker">Technical portfolio · not object detection</div>
+      <h1>Onboard navigation, SLAM/VIO, and sensor fusion.</h1>
+      <p class="lede">Companion-computer work for GPS-denied pose, occupancy mapping, and path planning. C++ / Python on Jetson-class hardware. This site is the evidence pack that sits next to the one-page CV for the Hest Industrial UAV guidance role.</p>
+      <div class="meta">
+        <span>Ho Chi Minh City</span>
+        <span><a href="mailto:phamthanhhiep000@gmail.com">phamthanhhiep000@gmail.com</a></span>
+        <span>+84 933 958 816</span>
+        <span><a href="https://github.com/Hiep-Bi">github.com/Hiep-Bi</a></span>
+      </div>
+    </header>
+
+    <p style="margin:0 0 16px"><a href="demo.html" style="display:inline-block;border:1px solid var(--accent);color:var(--accent);padding:8px 14px;letter-spacing:0.08em;font-size:12px;font-weight:700">▶ LIVE 3D DEMO — GPS-DENIED GUIDANCE</a></p>
+
+    <div class="stats">
+      <div class="stat"><b>~0.11 m</b><span>BLE ranging MAE (Kalman fusion)</span></div>
+      <div class="stat"><b>30 FPS</b><span>dense RTAB-Map cloud on device</span></div>
+      <div class="stat"><b>16.8k</b><span>Channel Sounding shots, 0.5–20 m</span></div>
+      <div class="stat"><b>+300%</b><span>Jetson TensorRT vs naive inference</span></div>
+    </div>
+
+    <div class="grid">
+      <a class="card" href="uav.html">
+        <div class="id">01 · GUIDANCE</div>
+        <h2>GPS-denied quadcopter</h2>
+        <p>ROS 2 Humble + PX4. VIO when GNSS drops, OctoMap occupancy, local planner, MAVSDK offboard. Airframe-agnostic so Quadplane/VTOL is a mixer change, not a SLAM rewrite.</p>
+        <div class="tagrow"><span class="tag">ROS 2</span><span class="tag">PX4</span><span class="tag">MAVLink</span><span class="tag">VIO</span></div>
+      </a>
+      <a class="card" href="ble.html">
+        <div class="id">02 · FUSION</div>
+        <h2>Automotive BLE Channel Sounding</h2>
+        <p>TI CC2745 car_node / key_node. Raw I/Q parse, MUSIC, jump filter, Kalman. Same ranging discipline as a GPS-denied EKF — not a neural detector.</p>
+        <div class="tagrow"><span class="tag">C firmware</span><span class="tag">MUSIC</span><span class="tag">Kalman</span><span class="tag">ONNX</span></div>
+      </a>
+      <a class="card" href="slam.html">
+        <div class="id">03 · MAP</div>
+        <h2>RTAB-Map dense SLAM core</h2>
+        <p>Replaced a deprecated AR SDK. C++ RTAB-Map on LiDAR + RGB, dense cloud at 30 FPS. Same frontend ports to a ROS 2 mapping node on Orin.</p>
+        <div class="tagrow"><span class="tag">RTAB-Map</span><span class="tag">LiDAR</span><span class="tag">C++</span></div>
+      </a>
+      <a class="card" href="agv.html">
+        <div class="id">04 · PLAN</div>
+        <h2>AGV fleet motion layer</h2>
+        <p>On-prem Genesis Twin: TimescaleDB telemetry, constraint scheduler for 10 AGVs, ROS + LiDAR local avoidance. Path allocation, not perception.</p>
+        <div class="tagrow"><span class="tag">ROS</span><span class="tag">LiDAR</span><span class="tag">planner</span></div>
+      </a>
+    </div>
+
+    <h3>What this is / is not</h3>
+    <div class="panel">
+      <p>Hest’s JD is autonomous navigation: ROS 2, PX4, SLAM/VIO, path planning, obstacle avoidance, GPS-denied, Jetson/Orin. Another team owns object detection. These pages stay on pose, map, and plan.</p>
+      <p class="note">Week-1 on your repo: PX4 SITL bring-up, vision pose into EKF2 with GPS off, then a short obstacle course. Hardware: Orin NX + depth + IMU, MAVSDK offboard, rosbag of EKF vs VIO.</p>
+    </div>
+
+    <footer>© 2026 Hiep Pham Thanh · local HTML pack, no tracking · open uav.html / ble.html / slam.html / agv.html next to this file</footer>
+  </div>
+</body>
+</html>
